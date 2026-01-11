@@ -1,3 +1,17 @@
+# Ignore everything in TuyaOpen SDK by default
+TuyaOpen/*
+
+# ...but verify path to our app exists
+!TuyaOpen/apps/
+TuyaOpen/apps/*
+!TuyaOpen/apps/voice_recorder/
+
+# Standard ignores
+.DS_Store
 monitor.log
 .build/
-TuyaOpen/apps/voice_recorder/.build/
+**/.build/
+__pycache__/
+*.bin
+*.elf
+*.map
