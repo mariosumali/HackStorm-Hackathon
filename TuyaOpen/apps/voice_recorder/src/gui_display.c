@@ -28,6 +28,7 @@ static lv_obj_t          *sg_result_textarea = NULL;
 static lv_obj_t          *sg_record_btn      = NULL;
 static lv_obj_t          *sg_btn_label       = NULL;
 static lv_obj_t          *sg_play_btn        = NULL;
+static lv_obj_t          *sg_upload_btn      = NULL;
 static lv_obj_t          *sg_play_label      = NULL;
 static lv_obj_t          *sg_chart           = NULL;
 static lv_chart_series_t *sg_ser1            = NULL;
@@ -73,16 +74,19 @@ static void __record_btn_event_cb(lv_event_t *e)
 
 static void __play_btn_event_cb(lv_event_t *e)
 {
-    lv_event_code_t code = lv_event_get_code(e);
+    lv_event_code_t code      = lv_event_get_code(e);
+    lv_obj_t       *opt_label = lv_obj_get_child(lv_event_get_target(e), 0);
 
     if (code == LV_EVENT_CLICKED) {
-        if (!sg_is_playing) {
+        if (0 == strcmp(lv_label_get_text(opt_label), "PLAY")) {
             if (voice_recorder_start_play() == OPRT_OK) {
-                sg_is_playing = true;
-                lv_label_set_text(sg_play_label, "STOP PLAY");
+                lv_label_set_text(opt_label, "STOP PLAY");
                 // Disable record btn
                 if (sg_record_btn)
                     lv_obj_add_state(sg_record_btn, LV_STATE_DISABLED);
+                // Disable upload btn
+                if (sg_upload_btn)
+                    lv_obj_add_state(sg_upload_btn, LV_STATE_DISABLED);
             }
         } else {
             voice_recorder_stop_play();
@@ -92,6 +96,15 @@ static void __play_btn_event_cb(lv_event_t *e)
             if (sg_record_btn)
                 lv_obj_clear_state(sg_record_btn, LV_STATE_DISABLED);
         }
+    }
+}
+
+static void __upload_btn_event_cb(lv_event_t *e)
+{
+    lv_event_code_t code = lv_event_get_code(e);
+    if (code == LV_EVENT_CLICKED) {
+        PR_NOTICE("Upload requested");
+        voice_recorder_upload_dump();
     }
 }
 
@@ -239,6 +252,20 @@ static void __create_ui(void)
     sg_play_label = lv_label_create(sg_play_btn);
     lv_label_set_text(sg_play_label, "PLAY");
     lv_obj_center(sg_play_label);
+
+    // Upload Button
+    sg_upload_btn = lv_btn_create(lv_scr_act());
+    lv_obj_set_size(sg_upload_btn, 100, 50);
+    lv_obj_align(sg_upload_btn, LV_ALIGN_BOTTOM_MID, 60, -50); // Shift Right
+    lv_obj_add_event_cb(sg_upload_btn, __upload_btn_event_cb, LV_EVENT_ALL, NULL);
+    lv_obj_set_style_bg_color(sg_upload_btn, lv_color_hex(0x2196F3), 0);
+
+    lv_obj_t *upload_label = lv_label_create(sg_upload_btn);
+    lv_label_set_text(upload_label, "UPLOAD");
+    lv_obj_center(upload_label);
+
+    // Adjust Play Button alignment to be Left
+    lv_obj_align(sg_play_btn, LV_ALIGN_BOTTOM_MID, -60, -50); // Shift Left
 
     // Chart
     sg_chart = lv_chart_create(scr);

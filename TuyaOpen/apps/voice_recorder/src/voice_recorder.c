@@ -48,12 +48,45 @@ static void __notify_status_change(VOICE_RECORDER_STATUS_E new_status)
     }
 }
 
+// Helper to dump audio as hex for PC streaming
+static void __hex_dump_audio(uint8_t *data, uint32_t len)
+{
+    // Print in chunks to avoid buffer limits if any, though PR_NOTICE usually handles it.
+    // Format: AUDIO:<hex_string>
+    // We'll trust the logger to handle meaningful line lengths.
+    // If len is large, we might need multiple lines.
+    // Audio frames are usually small (e.g. 128 bytes - 1024 bytes).
+
+    // Simple implementation: print chunk by chunk if needed.
+    // Here we assume frame size is manageable (e.g. < 2KB).
+    // Note: Logging overhead is high.
+
+    // Using a static buffer to save stack
+    // Max frame size guess: 2048 bytes -> 4096 hex chars + prefix
+    // Just handle small chunks for safety.
+
+#define CHUNK_SIZE 64 // process 64 bytes at a time (128 hex chars)
+    char hex_buf[CHUNK_SIZE * 2 + 1];
+
+    for (uint32_t i = 0; i < len; i += CHUNK_SIZE) {
+        uint32_t chunk = (len - i) > CHUNK_SIZE ? CHUNK_SIZE : (len - i);
+        for (uint32_t j = 0; j < chunk; j++) {
+            snprintf(&hex_buf[j * 2], 3, "%02X", data[i + j]);
+        }
+        PR_NOTICE("AUDIO:%s", hex_buf);
+    }
+}
+
 static void __audio_frame_callback(TDL_AUDIO_FRAME_FORMAT_E type, TDL_AUDIO_STATUS_E status, uint8_t *data,
                                    uint32_t len)
 {
     (void)type;
     (void)status;
     if (sg_status == VOICE_RECORDER_RECORDING) {
+
+        // 0. Stream to PC (Removed for Store-and-Forward)
+        // __hex_dump_audio(data, len);
+
         // 1. Write to ring buffer for processing/upload mocks
         if (sg_pcm_ringbuf) {
             tuya_ring_buff_write(sg_pcm_ringbuf, data, len);
@@ -203,6 +236,29 @@ OPERATE_RET voice_recorder_stop_play(void)
         sg_is_playing = false;
         PR_NOTICE("Playback stopped");
     }
+    return OPRT_OK;
+}
+
+OPERATE_RET voice_recorder_upload_dump(void)
+{
+    // Check if we have data
+    if (sg_playback_len == 0 || sg_playback_buf == NULL) {
+        PR_WARN("No data to upload");
+        return OPRT_COM_ERROR;
+    }
+
+    PR_NOTICE("UPLOAD_START");
+
+    // Allow system to breathe before dumping
+    tal_system_sleep(100);
+
+    // Reuse hex dump helper but with delay to prevent flooding if needed
+    // Hex dump helper prints AUDIO: prefix
+    __hex_dump_audio(sg_playback_buf, sg_playback_len);
+
+    tal_system_sleep(100);
+    PR_NOTICE("UPLOAD_END");
+
     return OPRT_OK;
 }
 
