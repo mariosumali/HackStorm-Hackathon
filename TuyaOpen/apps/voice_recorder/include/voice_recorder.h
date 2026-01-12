@@ -65,6 +65,12 @@ OPERATE_RET voice_recorder_start_play(void);
 OPERATE_RET voice_recorder_stop_play(void);
 
 /**
+ * @brief Upload recorded data to PC via UART
+ * @return OPRT_OK on success
+ */
+OPERATE_RET voice_recorder_upload_dump(void);
+
+/**
  * @brief Get current recording status
  * @return VOICE_RECORDER_STATUS_E
  */
